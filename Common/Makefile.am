@@ -1,5 +1,7 @@
 noinst_LIBRARIES = libcommon.a
 
+libcommon_a_CXXFLAGS = $(AM_CXXFLAGS) $(OPENMP_CXXFLAGS)
+
 libcommon_a_CPPFLAGS = -I$(top_srcdir)
 
 libcommon_a_SOURCES = \

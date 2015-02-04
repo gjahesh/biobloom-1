@@ -11,8 +11,8 @@
 #include "DataLayer/FastaIndex.h"
 
 WindowedFileParser::WindowedFileParser(string const &fileName,
-		unsigned windowSize) :
-		m_windowSize(windowSize), m_proc(ReadsProcessor(windowSize))
+		unsigned windowSize, unsigned blockSize) :
+		m_windowSize(windowSize), m_blocksize(blockSize)
 {
 	m_fastaFileHandle.open(fileName.c_str(), ifstream::in);
 	assert(m_fastaFileHandle);
@@ -34,16 +34,15 @@ void WindowedFileParser::setLocationByHeader(string const &header)
 	m_sequenceNotEnd = true;
 	m_currentHeader = header;
 	m_fastaFileHandle.seekg(m_fastaIndex[header].start, ios::beg);
-	m_currentCharNumber = 0;
+	m_currentLineNum = 0;
 	string bufferString;
 	getline(m_fastaFileHandle, m_currentString);
-	while ((m_currentString.length() < m_windowSize)
-			&& (m_currentCharNumber < m_fastaIndex[m_currentHeader].size)
+	while ((m_currentString.length() < m_blocksize)
+			&& (m_currentLineNum++ < m_fastaIndex[m_currentHeader].numLines)
 			&& getline(m_fastaFileHandle, bufferString))
 	{
 		m_currentString += bufferString;
 	}
-	m_currentLinePos = 0;
 }
 
 size_t WindowedFileParser::getSequenceSize(string const &header) const
@@ -57,33 +56,23 @@ size_t WindowedFileParser::getSequenceSize(string const &header) const
  * Return the next string in sliding window, also cleans and formats
  * sequences using ReadProcessor
  */
-const unsigned char* WindowedFileParser::getNextSeq()
+string WindowedFileParser::getNextSeq()
 {
-	if (m_currentString.length() < m_windowSize + m_currentLinePos) {
-		m_currentString.erase(0, m_currentLinePos);
-		m_currentLinePos = 0;
-		//grow the sequence to match the correct window size
-		//stop if there are no more lines left in fasta file
-		while (m_fastaFileHandle.is_open()
-				&& (m_currentString.length() < m_windowSize)
-				&& (m_currentCharNumber < m_fastaIndex[m_currentHeader].size)
-				&& getline(m_fastaFileHandle, m_bufferString))
-		{
-			m_currentString += m_bufferString;
-		}
-
-		//if there is not enough sequence for a full kmer
-		if (m_currentString.length() < m_windowSize) {
-			m_sequenceNotEnd = false;
-			return NULL;
-		}
+	string outStr = m_currentString;
+	if (outStr.length() - m_windowSize + 1 == 0) {
+		return "";
 	}
-	return m_proc.prepSeq(m_currentString, m_currentLinePos++);
-}
-
-bool WindowedFileParser::notEndOfSeqeunce() const
-{
-	return m_sequenceNotEnd;
+	//grow the sequence to match the correct window size
+	//stop if there are no more lines left in fasta file
+	m_currentString.erase(0, m_currentString.length() - m_windowSize + 1);
+	while (m_fastaFileHandle.is_open()
+			&& (m_currentString.length() < m_blocksize)
+			&& (m_currentLineNum++ < m_fastaIndex[m_currentHeader].numLines)
+			&& getline(m_fastaFileHandle, m_bufferString))
+	{
+		m_currentString += m_bufferString;
+	}
+	return outStr;
 }
 
 /*
@@ -112,6 +101,7 @@ void WindowedFileParser::initializeIndex(string const &fileName)
 			FastaIndexValue value;
 			ss >> header >> value.size >> value.start >> value.bpPerLine
 					>> value.charsPerLine;
+			value.numLines = (value.size + value.bpPerLine - 1) / value.bpPerLine;
 			value.index = m_headers.size();
 			m_fastaIndex[header] = value;
 			m_headers.push_back(header);

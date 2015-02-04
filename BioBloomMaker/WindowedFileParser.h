@@ -22,12 +22,11 @@ using namespace boost;
 class WindowedFileParser {
 public:
 	//constructor/destructor
-	explicit WindowedFileParser(const string &fileName, unsigned windowSize);
+	explicit WindowedFileParser(const string &fileName, unsigned windowSize, unsigned blocksize = 100000);
 	const vector<string> getHeaders() const;
-	void setLocationByHeader( const string &header);
-	size_t getSequenceSize( const string &header) const;
-	const unsigned char* getNextSeq();
-	bool notEndOfSeqeunce() const;
+	void setLocationByHeader(const string &header);
+	size_t getSequenceSize(const string &header) const;
+	string getNextSeq();
 
 	virtual ~WindowedFileParser();
 
@@ -38,6 +37,7 @@ private:
 		size_t start;
 		size_t bpPerLine;
 		size_t charsPerLine;
+		size_t numLines;
 	};
 
 	unordered_map<string, FastaIndexValue> m_fastaIndex;
@@ -45,14 +45,13 @@ private:
 	unsigned m_windowSize;
 	vector<string> m_headers;
 	string m_currentHeader;
-	size_t m_currentCharNumber;
-	size_t m_currentLinePos;
-	string m_window;
+	size_t m_currentLineNum; //current sequence location from header
 	string m_currentString;
-	ReadsProcessor m_proc;
 	bool m_sequenceNotEnd;
 
 	string m_bufferString; //so reallocation does not need to occur
+
+	unsigned m_blocksize; //minimum size to distribute sequences as
 
 	//helper methods
 	void initializeIndex(string const &fileName);

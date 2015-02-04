@@ -14,6 +14,9 @@
 #include <cstdlib>
 #include <stdio.h>
 #include <cstring>
+#if _OPENMP
+# include <omp.h>
+#endif
 
 /* De novo filter constructor.
  *
@@ -101,6 +104,7 @@ void BloomFilter::insert(const unsigned char* kmer)
 		size_t normalizedValue = CityHash64WithSeed(
 				reinterpret_cast<const char*>(kmer), m_kmerSizeInBytes, i)
 				% m_size;
+#pragma omp atomic
 		m_filter[normalizedValue / bitsPerChar] |= bitMask[normalizedValue
 				% bitsPerChar];
 	}
