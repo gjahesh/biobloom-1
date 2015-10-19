@@ -15,7 +15,7 @@
 #include <iostream>
 #include <assert.h>
 #include "WindowedFileParser.h"
-#include "Common/BloomFilterInfo.h"
+#include "BloomFilter/BloomFilterInfo.hpp"
 #include <cassert>
 #include <cmath>
 #include <FastaReader.h>
@@ -572,8 +572,7 @@ size_t BloomFilterGenerator::generate(const string &filename,
 					}
 
 					if (allowKmer) {
-						const vector<size_t> &tempHash = multiHash(currentSeq,
-								m_hashNum, m_kmerSize);
+						const vector<size_t> &tempHash = filter.multiHash(currentSeq);
 						if (filter.contains(tempHash)) {
 							m_redundancy++;
 						} else {

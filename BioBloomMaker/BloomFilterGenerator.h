@@ -9,7 +9,7 @@
 #define BLOOMFILTERGENERATOR_H_
 #include <boost/unordered/unordered_map.hpp>
 #include <vector>
-#include "Common/BloomFilter.h"
+#include "BloomFilter/BloomFilter.hpp"
 #include "Common/SeqEval.h"
 
 using namespace std;
@@ -55,8 +55,7 @@ private:
 			BloomFilter &filter)
 	{
 		if (currentSeq != NULL) {
-			const vector<size_t> &tempHash = multiHash(currentSeq, m_hashNum,
-					m_kmerSize);
+			const vector<size_t> &tempHash = filter.multiHash(currentSeq);
 			insertKmer(tempHash, filter);
 		}
 	}
