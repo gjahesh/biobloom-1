@@ -8,14 +8,14 @@
 #include "MultiFilter.h"
 
 MultiFilter::MultiFilter(uint16_t hashNum, uint16_t kmerSize) :
-		hashNum(hashNum), kmerSize(kmerSize) {
+		m_hashNum(hashNum), m_kmerSize(kmerSize) {
 
 }
 
 void MultiFilter::addFilter(string const &filterID,
 		boost::shared_ptr<BloomFilter> filter) {
-	filters[filterID] = filter;
-	filterIDs.push_back(filterID);
+	m_filters[filterID] = filter;
+	m_filterIDs.push_back(filterID);
 }
 
 //todo: implement partial hash function hashing (ie. Only half the number of hashing values for one filter)
@@ -24,10 +24,10 @@ void MultiFilter::addFilter(string const &filterID,
  */
 const boost::unordered_map<string, bool> MultiFilter::multiContains(
 		const unsigned char* kmer) {
-	const vector<size_t> &hashResults = multiHash(kmer, hashNum, kmerSize);
+	const vector<size_t> &hashResults = multiHash(kmer, m_hashNum, m_kmerSize);
 	boost::unordered_map<string, bool> tempResults;
 	for (boost::unordered_map<string, boost::shared_ptr<BloomFilter> >::iterator it =
-			filters.begin(); it != filters.end(); ++it) {
+			m_filters.begin(); it != m_filters.end(); ++it) {
 		tempResults[(*it).first] = ((*it).second)->contains(hashResults);
 	}
 	return tempResults;
@@ -38,18 +38,18 @@ const boost::unordered_map<string, bool> MultiFilter::multiContains(
  */
 const boost::unordered_map<string, bool> MultiFilter::multiContains(
 		const unsigned char* kmer, vector<string> const &tempFilters) {
-	const vector<size_t> &hashResults = multiHash(kmer, hashNum, kmerSize);
+	const vector<size_t> &hashResults = multiHash(kmer, m_hashNum, m_kmerSize);
 	boost::unordered_map<string, bool> tempResults;
 	for (vector<string>::const_iterator it = tempFilters.begin();
 			it != tempFilters.end(); ++it) {
-		tempResults[*it] = filters.at(*it)->contains(hashResults);
+		tempResults[*it] = m_filters.at(*it)->contains(hashResults);
 	}
 
 	return tempResults;
 }
 
 const vector<string> &MultiFilter::getFilterIds() const {
-	return filterIDs;
+	return m_filterIDs;
 }
 
 MultiFilter::~MultiFilter() {

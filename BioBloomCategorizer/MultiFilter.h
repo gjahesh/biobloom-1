@@ -9,7 +9,7 @@
 #define MULTIFILTER_H_
 #include <string>
 #include <vector>
-#include "Common/BloomFilter.h"
+#include "BloomFilter/BloomFilter.hpp"
 #include "boost/unordered/unordered_map.hpp"
 #include "boost/shared_ptr.hpp"
 using namespace std;
@@ -25,10 +25,10 @@ public:
 	const vector<string> &getFilterIds() const;
 	virtual ~MultiFilter();
 private:
-	boost::unordered_map<string, boost::shared_ptr<BloomFilter> > filters;
-	uint16_t hashNum;
-	uint16_t kmerSize;
-	vector<string> filterIDs;
+	boost::unordered_map<string, boost::shared_ptr<BloomFilter> > m_filters;
+	uint16_t m_hashNum;
+	uint16_t m_kmerSize;
+	vector<string> m_filterIDs;
 };
 
 #endif /* MULTIFILTER_H_ */
