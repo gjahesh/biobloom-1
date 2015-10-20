@@ -26,7 +26,7 @@ public:
 	const vector<string> getHeaders() const;
 	void setLocationByHeader( const string &header);
 	size_t getSequenceSize( const string &header) const;
-	const unsigned char* getNextSeq();
+	const char* getNextSeq();
 	bool notEndOfSeqeunce() const;
 
 	virtual ~WindowedFileParser();
@@ -45,7 +45,7 @@ private:
 	unsigned m_windowSize;
 	vector<string> m_headers;
 	string m_currentHeader;
-	size_t m_currentEndSeqPos;
+	size_t m_currentCharNumber;
 	size_t m_currentLinePos;
 	string m_window;
 	string m_currentString;

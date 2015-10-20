@@ -9,7 +9,7 @@
 #define BLOOMFILTERGENERATOR_H_
 #include <boost/unordered/unordered_map.hpp>
 #include <vector>
-#include "BloomFilter/BloomFilter.hpp"
+#include "bloomfilter/BloomFilter.hpp"
 #include "Common/SeqEval.h"
 
 using namespace std;
@@ -51,7 +51,7 @@ private:
 
 	boost::unordered_map<string, vector<string> > m_fileNamesAndHeaders;
 
-	inline void checkAndInsertKmer(const unsigned char* currentSeq,
+	inline void checkAndInsertKmer(const char* currentSeq,
 			BloomFilter &filter)
 	{
 		if (currentSeq != NULL) {

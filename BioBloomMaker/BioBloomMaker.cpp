@@ -10,7 +10,7 @@
 #include <vector>
 #include <iostream>
 #include "BloomFilterGenerator.h"
-#include "BloomFilter/BloomFilterInfo.hpp"
+#include "bloomfilter/BloomFilterInfo.hpp"
 #include "Common/SeqEval.h"
 #include <boost/unordered/unordered_map.hpp>
 #include <getopt.h>
