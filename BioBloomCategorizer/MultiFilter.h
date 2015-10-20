@@ -9,7 +9,7 @@
 #define MULTIFILTER_H_
 #include <string>
 #include <vector>
-#include "BloomFilter/BloomFilter.hpp"
+#include "bloomfilter/BloomFilter.hpp"
 #include "boost/unordered/unordered_map.hpp"
 #include "boost/shared_ptr.hpp"
 using namespace std;
@@ -18,8 +18,8 @@ class MultiFilter {
 public:
 	MultiFilter(uint16_t hashNum, uint16_t kmerSize);
 	void addFilter(string const &filterID, boost::shared_ptr<BloomFilter> filter);
-	const boost::unordered_map<string, bool> multiContains(const unsigned char* kmer);
-	const boost::unordered_map<string, bool> multiContains(const unsigned char* kmer,
+	const boost::unordered_map<string, bool> multiContains(const char* kmer);
+	const boost::unordered_map<string, bool> multiContains(const char* kmer,
 			vector<string> const &tempFilters);
 	const BloomFilter &getFilter(const string &filterID);
 	const vector<string> &getFilterIds() const;

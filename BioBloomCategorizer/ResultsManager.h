@@ -12,7 +12,7 @@
 #include <string>
 #include "boost/unordered/unordered_map.hpp"
 #include "boost/shared_ptr.hpp"
-#include "Common/BloomFilterInfo.h"
+#include "bloomfilter/BloomFilterInfo.hpp"
 #include "MultiFilter.h"
 
 using namespace std;

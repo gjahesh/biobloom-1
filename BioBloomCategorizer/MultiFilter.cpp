@@ -23,7 +23,7 @@ void MultiFilter::addFilter(string const &filterID,
  * checks filters for kmer, hashing only single time
  */
 const boost::unordered_map<string, bool> MultiFilter::multiContains(
-		const unsigned char* kmer) {
+		const char* kmer) {
 	const vector<size_t> &hashResults = m_filters.begin()->second->multiHash(kmer);
 	boost::unordered_map<string, bool> tempResults;
 	for (boost::unordered_map<string, boost::shared_ptr<BloomFilter> >::iterator it =
@@ -37,7 +37,7 @@ const boost::unordered_map<string, bool> MultiFilter::multiContains(
  * checks filters for k-mer, given a list of filterIDs, hashing only single time
  */
 const boost::unordered_map<string, bool> MultiFilter::multiContains(
-		const unsigned char* kmer, vector<string> const &tempFilters) {
+		const char* kmer, vector<string> const &tempFilters) {
 	const vector<size_t> &hashResults = m_filters.begin()->second->multiHash(kmer);
 	boost::unordered_map<string, bool> tempResults;
 	for (vector<string>::const_iterator it = tempFilters.begin();

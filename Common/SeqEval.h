@@ -19,33 +19,31 @@
 #include "DataLayer/FastaReader.h"
 #include "Common/Options.h"
 #include "Common/ReadsProcessor.h"
-#include "Common/BloomFilter.h"
+#include "bloomfilter/BloomFilter.hpp"
 
 using namespace std;
 using namespace boost;
 
 namespace SeqEval {
 
-inline double denormalizeScore(double score, unsigned kmerSize, size_t seqLen)
-{
+inline double denormalizeScore(double score, unsigned kmerSize, size_t seqLen) {
 	assert(score >= 0 && score <= 1);
 	return score * (seqLen - kmerSize + 1);
 }
 
-inline double normalizeScore(double score, unsigned kmerSize, size_t seqLen)
-{
+inline double normalizeScore(double score, unsigned kmerSize, size_t seqLen) {
 	return score / (seqLen - kmerSize + 1);
 }
 
 /*
  * Evaluation algorithm with hashValue storage (minimize redundant work)
  */
-inline bool evalSingle(const FastqRecord &rec, unsigned kmerSize, const BloomFilter &filter,
-		double threshold, double antiThreshold, unsigned hashNum,
-		vector<vector<size_t> > *hashValues, const BloomFilter *subtract)
-{
+inline bool evalSingle(const FastqRecord &rec, unsigned kmerSize,
+		const BloomFilter &filter, double threshold, double antiThreshold,
+		vector<vector<size_t> > *hashValues, const BloomFilter *subtract) {
 	threshold = denormalizeScore(threshold, kmerSize, rec.seq.length());
-	antiThreshold = floor(denormalizeScore(antiThreshold, kmerSize, rec.seq.length()));
+	antiThreshold = floor(
+			denormalizeScore(antiThreshold, kmerSize, rec.seq.length()));
 
 	ReadsProcessor proc(kmerSize);
 
@@ -54,10 +52,17 @@ inline bool evalSingle(const FastqRecord &rec, unsigned kmerSize, const BloomFil
 	unsigned antiScore = 0;
 	unsigned streak = 0;
 	while (rec.seq.length() >= currentLoc + kmerSize) {
-		const unsigned char* currentSeq = proc.prepSeq(rec.seq, currentLoc);
+		const char* currentSeq = proc.prepSeq(rec.seq, currentLoc);
 		if (streak == 0) {
 			if (currentSeq != NULL) {
-				vector<size_t> hash = multiHash(currentSeq, hashNum, kmerSize);
+				// compute enough hash values to check both the main Bloom filter
+				// and the subtractive Bloom filter
+				vector<size_t> hash =
+						subtract == NULL
+								|| filter.getHashNum()
+										> subtract->getHashNum() ?
+								filter.multiHash(currentSeq) :
+								subtract->multiHash(currentSeq);
 				if (hashValues != NULL)
 					(*hashValues)[currentLoc] = hash;
 				if ((subtract == NULL || !subtract->contains(hash))
@@ -67,8 +72,7 @@ inline bool evalSingle(const FastqRecord &rec, unsigned kmerSize, const BloomFil
 					if (threshold <= score) {
 						return true;
 					}
-				}
-				else if (antiThreshold <= ++antiScore) {
+				} else if (antiThreshold <= ++antiScore) {
 					return false;
 				}
 				++currentLoc;
@@ -86,7 +90,14 @@ inline bool evalSingle(const FastqRecord &rec, unsigned kmerSize, const BloomFil
 			}
 		} else {
 			if (currentSeq != NULL) {
-				vector<size_t> hash = multiHash(currentSeq, hashNum, kmerSize);
+				// compute enough hash values to check both the main Bloom filter
+				// and the subtractive Bloom filter
+				vector<size_t> hash =
+						subtract == NULL
+								|| filter.getHashNum()
+										> subtract->getHashNum() ?
+								filter.multiHash(currentSeq) :
+								subtract->multiHash(currentSeq);
 				if (hashValues != NULL)
 					(*hashValues)[currentLoc] = hash;
 				if ((subtract == NULL || !subtract->contains(hash))
@@ -99,8 +110,7 @@ inline bool evalSingle(const FastqRecord &rec, unsigned kmerSize, const BloomFil
 						return true;
 					}
 					continue;
-				}
-				else if (antiThreshold <= ++antiScore) {
+				} else if (antiThreshold <= ++antiScore) {
 					return false;
 				}
 			} else {
@@ -125,42 +135,38 @@ inline bool evalSingle(const FastqRecord &rec, unsigned kmerSize, const BloomFil
 /*
  * Evaluation algorithm with hashValue storage (minimize redundant work)
  */
-inline bool evalSingle(const FastqRecord &rec, unsigned kmerSize, const BloomFilter &filter,
-		double threshold, double antiThreshold, unsigned hashNum,
-		vector<vector<size_t> > &hashValues)
-{
-	return evalSingle(rec, kmerSize, filter, threshold, antiThreshold, hashNum,
+inline bool evalSingle(const FastqRecord &rec, unsigned kmerSize,
+		const BloomFilter &filter, double threshold, double antiThreshold,
+		vector<vector<size_t> > &hashValues) {
+	return evalSingle(rec, kmerSize, filter, threshold, antiThreshold,
 			&hashValues, NULL);
 }
 
 /*
  * Evaluation algorithm with no hashValue storage (optimize speed for single queries)
  */
-inline bool evalSingle(const FastqRecord &rec, unsigned kmerSize, const BloomFilter &filter,
-		double threshold, size_t antiThreshold)
-{
-	return evalSingle(rec, kmerSize, filter, threshold, antiThreshold, filter.getHashNum(),
-			NULL, NULL);
+inline bool evalSingle(const FastqRecord &rec, unsigned kmerSize,
+		const BloomFilter &filter, double threshold, size_t antiThreshold) {
+	return evalSingle(rec, kmerSize, filter, threshold, antiThreshold, NULL,
+	NULL);
 }
 
 /*
  * Evaluation algorithm with hashValue storage (minimize redundant work)
  */
-inline bool evalSingle(const FastqRecord &rec, unsigned kmerSize, const BloomFilter &filter,
-		double threshold, double antiThreshold, unsigned hashNum,
-		vector<vector<size_t> > &hashValues, const BloomFilter &subtract)
-{
-	return evalSingle(rec, kmerSize, filter, threshold, antiThreshold, hashNum,
+inline bool evalSingle(const FastqRecord &rec, unsigned kmerSize,
+		const BloomFilter &filter, double threshold, double antiThreshold,
+		vector<vector<size_t> > &hashValues, const BloomFilter &subtract) {
+	return evalSingle(rec, kmerSize, filter, threshold, antiThreshold,
 			&hashValues, &subtract);
 }
 
 /*
  * Evaluation algorithm based on minimum number of contiguous matching bases.
  */
-inline bool evalMinMatchLen(const FastqRecord &rec, unsigned kmerSize, const BloomFilter &filter,
-		unsigned minMatchLen, unsigned hashNum, vector<vector<size_t> > *hashValues,
-		const BloomFilter *subtract)
-{
+inline bool evalMinMatchLen(const FastqRecord &rec, unsigned kmerSize,
+		const BloomFilter &filter, unsigned minMatchLen,
+		vector<vector<size_t> > *hashValues, const BloomFilter *subtract) {
 	ReadsProcessor proc(kmerSize);
 	// number of contiguous k-mers matched
 	unsigned matchLen = 0;
@@ -171,13 +177,13 @@ inline bool evalMinMatchLen(const FastqRecord &rec, unsigned kmerSize, const Blo
 		if (l - i + matchLen < minMatchLen)
 			return false;
 		// get 2-bit encoding of k-mer at index i
-		const unsigned char* kmer = proc.prepSeq(rec.seq, i);
+		const char* kmer = proc.prepSeq(rec.seq, i);
 		if (kmer == NULL) {
 			matchLen = 0;
 			continue;
 		}
 		// compute Bloom filter hash functions
-		vector<size_t> hash = multiHash(kmer, hashNum, kmerSize);
+		vector<size_t> hash = filter.multiHash(kmer);
 		// cache hash values for future use
 		if (hashValues != NULL)
 			(*hashValues)[i] = hash;
@@ -191,8 +197,7 @@ inline bool evalMinMatchLen(const FastqRecord &rec, unsigned kmerSize, const Blo
 				matchLen = kmerSize;
 			else
 				++matchLen;
-		}
-		else {
+		} else {
 			matchLen = 0;
 		}
 		// if min match length reached
@@ -202,53 +207,45 @@ inline bool evalMinMatchLen(const FastqRecord &rec, unsigned kmerSize, const Blo
 	return false;
 }
 
-enum EvalMode { EVAL_STANDARD, EVAL_MIN_MATCH_LEN };
+enum EvalMode {
+	EVAL_STANDARD, EVAL_MIN_MATCH_LEN
+};
 
-inline bool evalRead(const FastqRecord &rec, unsigned kmerSize, const BloomFilter &filter,
-		double threshold, double antiThreshold, unsigned hashNum,
-		vector<vector<size_t> > *hashValues, const BloomFilter *subtract, EvalMode mode)
-{
-	// compute enough hash values to check both the main Bloom filter
-	// and the subtractive Bloom filter
-	if (subtract != NULL) {
-		if (subtract->getHashNum() > hashNum) {
-			hashNum = subtract->getHashNum();
-		}
-	}
-
-	switch(mode) {
+inline bool evalRead(const FastqRecord &rec, unsigned kmerSize,
+		const BloomFilter &filter, double threshold, double antiThreshold,
+		vector<vector<size_t> > *hashValues, const BloomFilter *subtract,
+		EvalMode mode) {
+	switch (mode) {
 	case EVAL_MIN_MATCH_LEN:
-		return evalMinMatchLen(rec, kmerSize, filter, (unsigned)round(threshold),
-			hashNum, hashValues, subtract);
+		return evalMinMatchLen(rec, kmerSize, filter,
+				(unsigned) round(threshold), hashValues, subtract);
 	case EVAL_STANDARD:
 	default:
 		return evalSingle(rec, kmerSize, filter, threshold, antiThreshold,
-			hashNum, hashValues, subtract);
+				hashValues, subtract);
 	}
 	assert(false);
 }
 
-inline bool evalRead(const FastqRecord &rec, unsigned kmerSize, const BloomFilter &filter,
-		double threshold, double antiThreshold, unsigned hashNum,
-		vector<vector<size_t> > &hashValues, const BloomFilter &subtract, EvalMode mode)
-{
-	return evalRead(rec, kmerSize, filter, threshold, antiThreshold, hashNum,
-		&hashValues, &subtract, mode);
-}
-
-inline bool evalRead(const FastqRecord &rec, unsigned kmerSize, const BloomFilter &filter,
-		double threshold, double antiThreshold, unsigned hashNum,
-		vector<vector<size_t> > &hashValues, EvalMode mode)
-{
-	return evalRead(rec, kmerSize, filter, threshold, antiThreshold, hashNum,
-		&hashValues, NULL, mode);
-}
-
-inline bool evalRead(const FastqRecord &rec, unsigned kmerSize, const BloomFilter &filter,
-		double threshold, double antiThreshold, EvalMode mode)
-{
+inline bool evalRead(const FastqRecord &rec, unsigned kmerSize,
+		const BloomFilter &filter, double threshold, double antiThreshold,
+		vector<vector<size_t> > &hashValues, const BloomFilter &subtract,
+		EvalMode mode) {
 	return evalRead(rec, kmerSize, filter, threshold, antiThreshold,
-		filter.getHashNum(), NULL, NULL, mode);
+			&hashValues, &subtract, mode);
+}
+
+inline bool evalRead(const FastqRecord &rec, unsigned kmerSize,
+		const BloomFilter &filter, double threshold, double antiThreshold,
+		vector<vector<size_t> > &hashValues, EvalMode mode) {
+	return evalRead(rec, kmerSize, filter, threshold, antiThreshold,
+			&hashValues, NULL, mode);
+}
+
+inline bool evalRead(const FastqRecord &rec, unsigned kmerSize,
+		const BloomFilter &filter, double threshold, double antiThreshold,
+		EvalMode mode) {
+	return evalRead(rec, kmerSize, filter, threshold, antiThreshold, NULL, NULL, mode);
 }
 
 /*
@@ -256,14 +253,13 @@ inline bool evalRead(const FastqRecord &rec, unsigned kmerSize, const BloomFilte
  * Returns score and does not have a stopping threshold
  */
 inline double evalSingleExhaust(const FastqRecord &rec, unsigned kmerSize,
-		const BloomFilter &filter)
-{
+		const BloomFilter &filter) {
 	ReadsProcessor proc(kmerSize);
 	size_t currentLoc = 0;
 	double score = 0;
 	unsigned streak = 0;
 	while (rec.seq.length() >= currentLoc + kmerSize) {
-		const unsigned char* currentKmer = proc.prepSeq(rec.seq, currentLoc);
+		const char* currentKmer = proc.prepSeq(rec.seq, currentLoc);
 		if (streak == 0) {
 			if (currentKmer != NULL) {
 				if (filter.contains(currentKmer)) {
@@ -377,8 +373,7 @@ inline double evalSingleExhaust(const FastqRecord &rec, unsigned kmerSize,
 inline bool eval(const FastqRecord &rec, unsigned kmerSize,
 		const BloomFilter &filter, double threshold, double antiThreshold,
 		vector<bool> &visited, vector<vector<size_t> > &hashValues,
-		unsigned &currentLoc, double &score, ReadsProcessor &proc)
-{
+		unsigned &currentLoc, double &score, ReadsProcessor &proc) {
 	threshold = denormalizeScore(threshold, kmerSize, rec.seq.length());
 	antiThreshold = denormalizeScore(antiThreshold, kmerSize, rec.seq.length());
 	score = denormalizeScore(score, kmerSize, rec.seq.length());
@@ -394,11 +389,9 @@ inline bool eval(const FastqRecord &rec, unsigned kmerSize,
 		//check if hash value is already generated
 		if (hashValues[currentLoc].size() == 0) {
 			if (!visited[currentLoc]) {
-				const unsigned char* currentSeq = proc.prepSeq(rec.seq,
-						currentLoc);
+				const char* currentSeq = proc.prepSeq(rec.seq, currentLoc);
 				if (currentSeq != NULL) {
-					hashValues[currentLoc] = multiHash(currentSeq, filter.getHashNum(),
-							kmerSize);
+					hashValues[currentLoc] = filter.multiHash(currentSeq);
 				}
 				visited[currentLoc] = true;
 			}
@@ -414,8 +407,7 @@ inline bool eval(const FastqRecord &rec, unsigned kmerSize,
 						hit = true;
 						break;
 					}
-				}
-				else if (antiThreshold <= ++antiScore) {
+				} else if (antiThreshold <= ++antiScore) {
 					++currentLoc;
 					hit = false;
 					break;
@@ -446,8 +438,7 @@ inline bool eval(const FastqRecord &rec, unsigned kmerSize,
 						break;
 					}
 					continue;
-				}
-				else if (antiThreshold <= ++antiScore) {
+				} else if (antiThreshold <= ++antiScore) {
 					++currentLoc;
 					hit = false;
 					break;
