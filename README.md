@@ -168,6 +168,17 @@ Within the information txt file for each bloom filter there is a “num_entries�
 ######ii. Obtaining the number of redundant k-mers in the reference:
 Within the information txt file for each bloom filter there is a “redundant_sequences” entry that lets you know how many redundant k-mers have been added to the filter. It is an upper bound estimate due to possible false positives. The “redundant_fpr” represents the probability that any one random redundant k-mer is actually unique. Thus, to get the approximate number of unique k-mers take the “redundant_fpr” value and multiply it with the “redundant_sequences” sequences and add that to the “num_entries”.
 
+How to calculate the approximate Number of unique K-mers:  
+
+Number of Unique K-mers ~ (redundant_fpr * Total No. of Entries)+ No. of Entries  
+
+Example:  
+
+Total No. of Entries = 20  
+Number of Entries = 12  
+
+With redundant_fpr = 0.02 -> No. of Unique K-mers ~ (0.02*20) + 12 = 16   
+
 #####F. Specifications on memory, cpu and storage requirements
 
 Memory:
