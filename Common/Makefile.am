@@ -8,7 +8,7 @@ libcommon_a_SOURCES = \
 	gzstream.C gzstream.h \
 	IOUtil.h \
 	Options.cpp Options.h \
-	ReadsProcessor.cpp ReadsProcessor.h \
+	ReadsProcessor.h \
 	Sequence.cpp Sequence.h \
 	SeqEval.h \
 	SignalHandler.cpp SignalHandler.h \
